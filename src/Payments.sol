@@ -3,11 +3,14 @@ pragma solidity 0.8.19;
 
 import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract Payments is Ownable {
+    using SafeERC20 for IERC20;
+
     enum Phase {
         CONTEXT_FASE,
-        TEST_FASE,
+        FUZZ_TEST_FASE,
         INVARIANT_TEST_FASE,
         MANUAL_REVIEW_FASE,
         MITIGATION_REVIEW_FASE,
@@ -45,34 +48,18 @@ contract Payments is Ownable {
         _;
     }
 
+    /*//////////////////////////////////////////////////////////////////////////
+                                    COMPANY FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
+
     function createAudit(address _client, uint256 _price) external onlyOwner {
         require(_client != address(0), "Can't be address zero");
         require(_price != 0, "The price of the audit can't be zero");
 
         auditId += 1;
-
-        Audit memory audit = Audit(_client, _price, _price / 6, Phase.CONTEXT_FASE, false);
+        uint256 pricePerPhase = _price / uint256(type(Phase).max) + 1;
+        Audit memory audit = Audit(_client, _price, pricePerPhase, Phase.CONTEXT_FASE, false);
         audits[auditId] = audit;
-    }
-
-    function deposit(uint256 _auditId, uint256 _amount) external validateClient(_auditId) {
-        Audit storage audit = audits[auditId];
-        require(audit.deposited == false, "Audit price has already been paid");
-        require(_amount == audit.price, "Invalid price for the audit");
-
-        audit.deposited = true;
-
-        require(paymentToken.transferFrom(audit.client, address(this), audit.price) == true, "Transfer failed");
-    }
-
-    function withdraw(uint256 _auditId) external validateClient(_auditId) {
-        Audit storage audit = audits[auditId];
-        require(audit.deposited == true, "Client has not deposited yet");
-
-        uint256 priceBefore = audit.price;
-        audit.price = 0;
-
-        require(paymentToken.transfer(audit.client, priceBefore) == true, "Transfer failed");
     }
 
     function submitHandshake(Handshake calldata _handshake) external onlyOwner {
@@ -84,6 +71,30 @@ contract Payments is Ownable {
         handshakes[auditId][_handshake.phase] = _handshake;
     }
 
+    /*//////////////////////////////////////////////////////////////////////////
+                                    CLIENT FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
+
+    function deposit(uint256 _auditId, uint256 _amount) external validateClient(_auditId) {
+        Audit storage audit = audits[auditId];
+        require(audit.deposited == false, "Audit price has already been paid");
+        require(_amount == audit.price, "Invalid price for the audit");
+
+        audit.deposited = true;
+
+        paymentToken.safeTransferFrom(audit.client, address(this), audit.price);
+    }
+
+    function withdraw(uint256 _auditId) external validateClient(_auditId) {
+        Audit storage audit = audits[auditId];
+        require(audit.deposited == true, "Client has not deposited yet");
+
+        uint256 priceBefore = audit.price;
+        audit.price = 0;
+
+        paymentToken.safeTransfer(audit.client, priceBefore);
+    }
+
     function confirmHandshake(uint256 _auditId) external validateClient(_auditId) {
         Phase currentPhase = audits[_auditId].phase;
         require(handshakes[_auditId][currentPhase].confirmed == false, "Phase already confirmed");
@@ -93,6 +104,6 @@ contract Payments is Ownable {
         audit.phase = Phase(uint256(audit.phase) + 1);
         audit.price -= audit.pricePerPhase;
 
-        require(paymentToken.transferFrom(audit.client, owner(), audit.pricePerPhase) == true, "Transfer failed");
+        paymentToken.safeTransferFrom(audit.client, owner(), audit.pricePerPhase);
     }
 }
