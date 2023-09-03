@@ -1,3 +1,7 @@
+## Audits payment stream
+
+**Allows payments to be split accross multiple phases of an audit**. 
+
 ## Usage
 
 ### Build
@@ -8,7 +12,7 @@ $ forge build
 
 ### Setup RPC provider
 ```shell
-$ ETH_RPC_URL="your rpc url here";
+$ ETH_RPC_URL="URL";
 ```
 
 ```shell
