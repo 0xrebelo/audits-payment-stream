@@ -15,6 +15,7 @@ $ forge build
 $ ETH_RPC_URL="URL";
 ```
 
+### Run the tests
 ```shell
 $ forge test --fork-url $ETH_RPC_URL
 ```
