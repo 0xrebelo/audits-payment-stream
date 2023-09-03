@@ -3,7 +3,6 @@ pragma solidity 0.8.19;
 
 import {Test, console2} from "../lib/forge-std/src/Test.sol";
 import {Audits} from "../src/Audits.sol";
-
 interface IUSDC {
     function balanceOf(address account) external view returns (uint256);
     function mint(address to, uint256 amount) external;
@@ -11,7 +10,7 @@ interface IUSDC {
     function masterMinter() external view returns (address);
 }
 
-contract Setup is Test {
+contract AuditsTest is Test {
     Audits public audits;
     IUSDC public usdc;
 

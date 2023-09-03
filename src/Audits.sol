@@ -1,14 +1,51 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {IAudits} from "./IAudits.sol";
-
 import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract Audits is IAudits, Ownable {
+contract Audits is Ownable {
     using SafeERC20 for IERC20;
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                        STRUCTS
+    //////////////////////////////////////////////////////////////////////////*/
+
+    struct Audit {
+        address client;
+        address token;
+        uint256 amount;
+        uint256 amountPerPhase;
+        uint256 totalPhases;
+        uint256 currentPhase;
+        bool confirmed;
+        bool finished;
+    }
+
+    struct Phase {
+        bool submitted;
+        bool confirmed;
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                        ERRORS
+    //////////////////////////////////////////////////////////////////////////*/
+
+    error AddressZero();
+    error ZeroAmount();
+    error ExceededMaxPhases();
+    error AuditInvalidClient();
+    error AuditAlreadyConfirmed();
+    error AuditNotYetConfirmed();
+    error AuditAlreadyFinished();
+    error PhaseAlreadyConfirmed();
+    error PhaseAlreadySubmitted();
+    error PhaseNotYetSubmitted();
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                        STORAGE
+    //////////////////////////////////////////////////////////////////////////*/
 
     // @notice audit id => Audit.
     mapping(uint256 => Audit) public audits;
