@@ -44,6 +44,17 @@ contract Audits is Ownable {
     error PhaseNotYetSubmitted();
 
     /*//////////////////////////////////////////////////////////////////////////
+                                        EVENTS
+    //////////////////////////////////////////////////////////////////////////*/
+
+    event AuditProposed(uint256 auditId);
+    event AuditApproved(uint256 auditId);
+    event AuditCanceled(uint256 auditId);
+    event AuditFinished(uint256 auditId);
+    event PhaseSubmitted(uint256 auditId, uint256 phase);
+    event PhaseApproved(uint256 auditId, uint256 phase);
+
+    /*//////////////////////////////////////////////////////////////////////////
                                         STORAGE
     //////////////////////////////////////////////////////////////////////////*/
 
@@ -80,6 +91,8 @@ contract Audits is Ownable {
         _currentAuditId++;
         audits[_currentAuditId] = audit;
 
+        emit AuditProposed(_currentAuditId);
+
         return _currentAuditId;
     }
 
@@ -92,6 +105,8 @@ contract Audits is Ownable {
         audit.confirmed = true;
 
         IERC20(audit.token).safeTransferFrom(audit.client, address(this), audit.amount);
+
+        emit AuditApproved(auditId);
     }
 
     function cancelAudit(uint256 auditId) external {
@@ -107,6 +122,8 @@ contract Audits is Ownable {
         audit.amount = 0;
 
         IERC20(audit.token).safeTransfer(audit.client, amount);
+
+        emit AuditCanceled(auditId);
     }
 
     function submitPhase(uint256 auditId) external onlyOwner {
@@ -117,6 +134,8 @@ contract Audits is Ownable {
         if (phase.submitted == true) revert PhaseAlreadySubmitted();
 
         phase.submitted = true;
+
+        emit PhaseSubmitted(auditId, audit.currentPhase);
     }
 
     function approvePhase(uint256 auditId) external {
@@ -128,15 +147,20 @@ contract Audits is Ownable {
         if (phase.submitted == false) revert PhaseNotYetSubmitted();
         if (phase.confirmed == true) revert PhaseAlreadyConfirmed();
 
+        uint256 phaseBefore = audit.currentPhase;
+
         phase.confirmed = true;
         audit.currentPhase += 1;
         audit.amount -= audit.amountPerPhase;
 
         if (audit.currentPhase == audit.totalPhases) {
             audit.finished = true;
+            emit AuditFinished(auditId);
         }
 
         IERC20(audit.token).safeTransfer(owner(), audit.amountPerPhase);
+
+        emit PhaseApproved(auditId, phaseBefore);
     }
 
     /*//////////////////////////////////////////////////////////////////////////
