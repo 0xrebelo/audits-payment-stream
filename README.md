@@ -1,4 +1,4 @@
-## Audits payment stream
+## Audit Payment Stream
 
 **Allows payments to be split accross multiple phases of an audit**. 
 
