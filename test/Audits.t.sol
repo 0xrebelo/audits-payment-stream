@@ -6,6 +6,7 @@ import {Audits} from "../src/Audits.sol";
 interface IUSDC {
     function balanceOf(address account) external view returns (uint256);
     function mint(address to, uint256 amount) external;
+    function approve(address spender, uint256 amount) external;
     function configureMinter(address minter, uint256 minterAllowedAmount) external;
     function masterMinter() external view returns (address);
 }
@@ -17,7 +18,7 @@ contract AuditsTest is Test {
     address public provider;
     address public client;
     
-    function setUp() external {
+    function setUp() public {
         provider = address(100);
         client = address(200);
         usdc = IUSDC(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
@@ -34,5 +35,34 @@ contract AuditsTest is Test {
 
         usdc.mint(client, 60000e6);
         assertEq(usdc.balanceOf(client), 60000e6);
+    }
+
+    function testProposeAudit() public {
+        vm.prank(provider);
+        uint256 auditId = audits.proposeAudit(client, address(usdc), 60000e6, 6);
+        assertEq(auditId, 1);
+
+        Audits.Audit memory audit = audits.getAudit(auditId);
+        assertEq(audit.client, client);
+        assertEq(audit.token, address(usdc));
+        assertEq(audit.amount, 60000e6);
+        assertEq(audit.amountPerPhase, 10000e6);
+        assertEq(audit.totalPhases, 6);
+        assertEq(audit.currentPhase, 0);
+        assertEq(audit.confirmed, false);
+        assertEq(audit.finished, false);
+    }
+
+    function testApproveAudit() public {
+        testProposeAudit();
+
+        vm.startPrank(client);
+        usdc.approve(address(audits), 60000e6);
+        audits.approveAudit(1);
+        vm.stopPrank();
+
+        Audits.Audit memory audit = audits.getAudit(1);
+        assertEq(audit.confirmed, true);
+        assertEq(usdc.balanceOf(address(audits)), 60000e6);
     }
 }
